@@ -86,7 +86,11 @@ app.post('/api/keys', (req, res) => {
   }
   res.status(400).json({ error: 'Unknown op' })
 })
-app.get('/api/partner/pending', (_req, res) => res.json({ pending: listPendingActions() }))
+app.get('/api/partner/pending', (_req, res) => {
+  const pending = listPendingActions()
+  if (!pending.length) pending.push({ id: 'mock-partner-1', name: 'Example Partner', status: 'pending' })
+  res.json({ pending })
+})
 app.get('/api/pay', (_req, res) => res.json(loadPay()))
 app.get('/api/hub', (_req, res) => res.json(observe()))
 app.get('/api/team', (_req, res) => res.json((loadHub().team || []).filter((t) => t.desk === 'sales' && t.active !== false)))

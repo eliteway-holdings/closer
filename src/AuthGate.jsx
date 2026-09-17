@@ -14,6 +14,7 @@ export default function AuthGate({ allowedRoles, title, children }) {
       setSession(JSON.parse(storedUser))
     } catch {
       localStorage.removeItem('closer_user')
+      setSession({ role: null })
     }
   }, [])
   async function submit(e) {
@@ -27,9 +28,11 @@ export default function AuthGate({ allowedRoles, title, children }) {
     localStorage.removeItem('closer_user')
     setSession(null)
   }
+  const role = typeof session?.role === 'string' ? session.role.toLowerCase() : session?.role
   if (!session) return <div className="min-h-screen" />
-  if (!allowedRoles.includes(session.role)) return session.role ? <Blocked title={title} role={session.label} /> : <Login title={title} form={form} setForm={setForm} submit={submit} error={error} />
+  if (!role) return <Login title={title} form={form} setForm={setForm} submit={submit} error={error} />
+  if (!allowedRoles.includes(role)) return <AccessDenied title={title} role={session.label || session.role} logout={logout} />
   return <><div className="fixed top-3 right-3 z-50 glass px-3 py-2 text-xs uppercase tracking-widest">Security: {session.label || session.role}<button className="ml-3 underline" type="button" onClick={logout}>Log out</button></div>{children}</>
 }
 function Login({ title, form, setForm, submit, error }) { return <main className="min-h-screen grid place-items-center px-4"><form onSubmit={submit} className="glass p-7 w-full max-w-md grid gap-4"><p className="desk-kicker">Elite Way · secure desk</p><h1 className="text-3xl font-black">{title}</h1><p className="text-white/55 text-sm">Sign in with the role passcode issued by House.</p><input autoComplete="username" placeholder="Username" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} /><input required type="password" autoComplete="current-password" placeholder="Passcode" value={form.passcode} onChange={(e) => setForm({ ...form, passcode: e.target.value })} /><button className="btn-primary" type="submit">Enter desk</button>{error ? <p className="text-sm text-rose-300">{error}</p> : null}</form></main> }
-function Blocked({ title, role }) { const target = role === 'Executive' ? (import.meta.env.VITE_HOUSE_URL || window.location.origin) : (import.meta.env.VITE_MARKETING_URL || window.location.origin); useEffect(() => { window.location.replace(target) }, [target]); return <main className="min-h-screen grid place-items-center px-4"><div className="glass p-7 w-full max-w-md"><p className="desk-kicker">Redirecting</p><h1 className="text-3xl font-black">{title}</h1><p className="text-white/55 text-sm mt-3">{role} credentials belong on their permitted dashboard.</p></div></main> }
+function AccessDenied({ title, role, logout }) { return <main className="min-h-screen grid place-items-center px-4"><div className="glass p-7 w-full max-w-md"><p className="desk-kicker">Access denied</p><h1 className="text-3xl font-black">{title}</h1><p className="text-white/55 text-sm mt-3">{role} credentials do not have access to this dashboard.</p><button className="btn-primary mt-5" type="button" onClick={logout}>Log out</button></div></main> }

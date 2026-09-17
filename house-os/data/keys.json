@@ -1,0 +1,12 @@
+{
+  "active": "k-1kkca2",
+  "list": [
+    {
+      "id": "k-1kkca2",
+      "name": "OpenRouter reasoning",
+      "key": "",
+      "base": "https://openrouter.ai/api/v1",
+      "model": "openai/gpt-4o-mini"
+    }
+  ]
+}

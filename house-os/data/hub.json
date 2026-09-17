@@ -1,0 +1,379 @@
+{
+  "sales": {
+    "staff": "Emmaculate",
+    "target": 10000,
+    "pay": {
+      "bank": "",
+      "accountName": "Elite Way Holdings",
+      "accountNumber": "",
+      "branch": "",
+      "type": "Cheque / current",
+      "reference": "",
+      "extra": ""
+    },
+    "leads": [
+      {
+        "id": "n0cdwmn",
+        "name": "Hagee",
+        "company": "Hageethe barber",
+        "phone": "0762627393",
+        "email": "na",
+        "offer": "book",
+        "amount": 1500,
+        "note": "",
+        "stage": "WhatsApp"
+      },
+      {
+        "id": "5ead4r1",
+        "name": "John",
+        "company": "Hype",
+        "phone": "0875432556",
+        "email": "ehbsmdh@gnn.co",
+        "offer": "health",
+        "amount": 4500,
+        "note": "",
+        "stage": "Won"
+      },
+      {
+        "id": "vauav5c",
+        "name": "Practice manager",
+        "company": "{{clinic}}",
+        "phone": "",
+        "email": "",
+        "offer": "health",
+        "amount": 4500,
+        "stage": "Won",
+        "note": "Bookings human — not the doctor"
+      }
+    ],
+    "drafts": [],
+    "calls": [],
+    "invoices": [],
+    "quotes": [
+      {
+        "id": "Q-MU2S0Y58",
+        "lead": {
+          "name": "Practice manager",
+          "company": "{{clinic}}",
+          "email": "",
+          "phone": ""
+        },
+        "offer": {
+          "id": "health",
+          "name": "Elite Way Health Tech System (EWHTS)",
+          "price": 4500,
+          "monthly": 1500,
+          "pitch": "medical facilities",
+          "locked": true
+        },
+        "items": [
+          {
+            "name": "Elite Way Health Tech System (EWHTS) — setup",
+            "amount": 4500
+          },
+          {
+            "name": "Elite Way Health Tech System (EWHTS) — first month",
+            "amount": 1500
+          }
+        ],
+        "monthly": 1500,
+        "amount": 6000,
+        "setup": 4500,
+        "vat": 900,
+        "total": 6900,
+        "commission": {
+          "rate": 0.08,
+          "pay": 360
+        },
+        "date": "2026/09/15",
+        "kind": "quote"
+      }
+    ],
+    "activity": [
+      {
+        "id": "520zqdh",
+        "at": "2026-09-15T14:40:06.592Z",
+        "text": "Practice manager → Won",
+        "lead": "Practice manager"
+      },
+      {
+        "id": "55vio60",
+        "at": "2026-09-15T14:40:03.015Z",
+        "text": "Practice manager → Demo",
+        "lead": "Practice manager"
+      },
+      {
+        "id": "goxfet7",
+        "at": "2026-09-15T14:40:00.774Z",
+        "text": "Practice manager → Call",
+        "lead": "Practice manager"
+      },
+      {
+        "id": "7l2u1mc",
+        "at": "2026-09-15T14:39:45.371Z",
+        "text": "John → Won",
+        "lead": "John"
+      },
+      {
+        "id": "tzfvhsx",
+        "at": "2026-09-15T14:39:32.310Z",
+        "text": "John → Invoice",
+        "lead": "John"
+      },
+      {
+        "id": "qbswpod",
+        "at": "2026-09-15T14:39:29.112Z",
+        "text": "John → Demo",
+        "lead": "John"
+      },
+      {
+        "id": "66as7vv",
+        "at": "2026-09-15T14:39:23.813Z",
+        "text": "John → Call",
+        "lead": "John"
+      },
+      {
+        "id": "cba35rb",
+        "at": "2026-09-15T14:38:06.044Z",
+        "text": "Quote Q-MU2S0Y58 · Practice manager",
+        "lead": "Practice manager"
+      }
+    ],
+    "products": []
+  },
+  "mkt": {
+    "staff": "Marketer 1",
+    "role": "Marketing",
+    "email": "",
+    "handle": "@eliteway_club.sa",
+    "posts": [
+      {
+        "id": "0hzb4gw",
+        "date": "2026-09-15",
+        "channel": "ig",
+        "type": "Carousel",
+        "title": "EWHTS four boxes",
+        "caption": "Empty chairs on a Monday are not “quiet.” They are a reminder that never left.\n\nElite Way Health Tech System (EWHTS)\n• next appointment, automatic\n• summary after the consult\n• prescription as a PDF link\n• a clean way to message your own patients\n\nR4 500 setup once. R1 500 / month.\n\nPretoria house. WhatsApp 076 342 5896.",
+        "asset": "Carousel 4 slides — reminder / summary / PDF / marketing",
+        "kit": "ewhts",
+        "owner": "Marketer 1",
+        "status": "Assets"
+      },
+      {
+        "id": "6thvu07",
+        "date": "2026-09-16",
+        "channel": "li",
+        "type": "Graphic",
+        "title": "Holdings one-liner",
+        "caption": "Elite Way Holdings. Pretoria.\n\nSame blood as Elite Way Marketing and Elite Way Club SA.\nSoftware at the core. Community in the muscle.\n2.5M combined organic views on Embedded. 100 school halls with Edu School Communicator.\n\nA tech house on the verge of a breakthrough — not a slide that invents a valuation.\n\neliteway.co.za",
+        "asset": "Square graphic, logo-mark, Pretoria",
+        "kit": "house",
+        "owner": "Marketer 1",
+        "status": "Idea"
+      },
+      {
+        "id": "mwx5bg0",
+        "date": "2026-09-17",
+        "channel": "x",
+        "type": "Video",
+        "title": "DM to book",
+        "caption": "If the bio still says “DM to book,” the chair is typing.\n\nWhite-label booking OS — their name on the page, not ours.\nClient picks a slot. Diary in one place. Reminder leaves alone.\n\nR3 800 setup once. R1 200 / month.\n\nElite Way Holdings · Pretoria",
+        "asset": "15s cut — chair + phone",
+        "kit": "book",
+        "owner": "Marketer 1",
+        "status": "Idea"
+      }
+    ],
+    "assets": [
+      {
+        "id": "gyvivgb",
+        "kind": "Graphic",
+        "name": "EWHTS s1",
+        "link": "",
+        "note": "Elite Way Holdings - Unleash Your Potential"
+      },
+      {
+        "id": "zfe5l2d",
+        "kind": "Carousel",
+        "name": "EWHTS four boxes",
+        "link": "",
+        "note": "Slide 1 empty chair. 2 reminder. 3 PDF. 4 marketing."
+      },
+      {
+        "id": "rozq8p4",
+        "kind": "Video",
+        "name": "Booking 15s",
+        "link": "",
+        "note": "Bio “DM to book” → white-label page."
+      }
+    ]
+  },
+  "team": [],
+  "events": [
+    {
+      "at": "2026-09-16T05:46:00.981Z",
+      "desk": "sales",
+      "text": "Closer book synced"
+    },
+    {
+      "at": "2026-09-16T05:45:55.312Z",
+      "desk": "sales",
+      "text": "Closer book synced"
+    },
+    {
+      "at": "2026-09-16T05:45:54.752Z",
+      "desk": "sales",
+      "text": "Closer book synced"
+    },
+    {
+      "at": "2026-09-16T05:45:53.584Z",
+      "desk": "sales",
+      "text": "Closer book synced"
+    },
+    {
+      "at": "2026-09-16T05:45:47.671Z",
+      "desk": "sales",
+      "text": "Closer book synced"
+    },
+    {
+      "at": "2026-09-16T05:45:47.105Z",
+      "desk": "sales",
+      "text": "Closer book synced"
+    },
+    {
+      "at": "2026-09-16T05:45:47.098Z",
+      "desk": "sales",
+      "text": "Closer book synced"
+    },
+    {
+      "at": "2026-09-16T05:45:45.675Z",
+      "desk": "sales",
+      "text": "Closer book synced"
+    },
+    {
+      "at": "2026-09-16T05:03:41.710Z",
+      "desk": "sales",
+      "text": "Closer book synced"
+    },
+    {
+      "at": "2026-09-16T04:56:05.738Z",
+      "desk": "sales",
+      "text": "Closer book synced"
+    },
+    {
+      "at": "2026-09-15T21:25:22.469Z",
+      "desk": "marketing",
+      "text": "Marketing board synced"
+    },
+    {
+      "at": "2026-09-15T21:25:06.877Z",
+      "desk": "marketing",
+      "text": "Marketing board synced"
+    },
+    {
+      "at": "2026-09-15T21:25:05.701Z",
+      "desk": "marketing",
+      "text": "Marketing board synced"
+    },
+    {
+      "at": "2026-09-15T21:25:05.338Z",
+      "desk": "marketing",
+      "text": "Marketing board synced"
+    },
+    {
+      "at": "2026-09-15T21:15:26.368Z",
+      "desk": "sales",
+      "text": "Closer book synced"
+    },
+    {
+      "at": "2026-09-15T21:10:20.239Z",
+      "desk": "sales",
+      "text": "Closer book synced"
+    },
+    {
+      "at": "2026-09-15T17:25:23.573Z",
+      "desk": "marketing",
+      "text": "Marketing board synced"
+    },
+    {
+      "at": "2026-09-15T16:26:35.613Z",
+      "desk": "marketing",
+      "text": "Marketing board synced"
+    },
+    {
+      "at": "2026-09-15T16:07:31.695Z",
+      "desk": "marketing",
+      "text": "Marketing board synced"
+    },
+    {
+      "at": "2026-09-15T16:07:29.811Z",
+      "desk": "marketing",
+      "text": "Marketing board synced"
+    },
+    {
+      "at": "2026-09-15T14:40:07.333Z",
+      "desk": "sales",
+      "text": "Closer book synced"
+    },
+    {
+      "at": "2026-09-15T14:40:03.786Z",
+      "desk": "sales",
+      "text": "Closer book synced"
+    },
+    {
+      "at": "2026-09-15T14:40:01.615Z",
+      "desk": "sales",
+      "text": "Closer book synced"
+    },
+    {
+      "at": "2026-09-15T14:39:46.104Z",
+      "desk": "sales",
+      "text": "Closer book synced"
+    },
+    {
+      "at": "2026-09-15T14:39:33.028Z",
+      "desk": "sales",
+      "text": "Closer book synced"
+    },
+    {
+      "at": "2026-09-15T14:39:29.921Z",
+      "desk": "sales",
+      "text": "Closer book synced"
+    },
+    {
+      "at": "2026-09-15T14:39:24.529Z",
+      "desk": "sales",
+      "text": "Closer book synced"
+    },
+    {
+      "at": "2026-09-15T14:39:17.018Z",
+      "desk": "sales",
+      "text": "Closer book synced"
+    },
+    {
+      "at": "2026-09-15T14:38:06.798Z",
+      "desk": "sales",
+      "text": "Closer book synced"
+    },
+    {
+      "at": "2026-09-15T14:37:37.108Z",
+      "desk": "sales",
+      "text": "Closer book synced"
+    },
+    {
+      "at": "2026-09-15T14:25:28.066Z",
+      "desk": "marketing",
+      "text": "Marketing board synced"
+    },
+    {
+      "at": "2026-09-15T14:23:59.193Z",
+      "desk": "marketing",
+      "text": "Marketing board synced"
+    }
+  ],
+  "updated": {
+    "sales": "2026-09-16T05:46:00.981Z",
+    "mkt": "2026-09-15T21:25:22.469Z",
+    "team": ""
+  }
+}

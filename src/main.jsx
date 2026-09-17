@@ -6,6 +6,6 @@ import AuthGate from './AuthGate.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <AuthGate allowedRoles={['executive', 'sales']} title="Closer OS"><Sales /></AuthGate>
+    <AuthGate allowedRoles={['admin', 'executive', 'sales']} title="Closer OS"><Sales /></AuthGate>
   </StrictMode>,
 )

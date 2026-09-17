@@ -53,8 +53,22 @@ function llmMessages(messages = []) {
   }))
 }
 
+const NVIDIA_CHAT_COMPLETIONS = 'https://integrate.api.nvidia.com/v1/chat/completions'
+
+function completionEndpoint(base) {
+  const normalized = String(base || 'https://api.openai.com/v1').trim().replace(/\/+$/, '')
+  try {
+    const url = new URL(normalized)
+    if (url.hostname === 'integrate.api.nvidia.com') return NVIDIA_CHAT_COMPLETIONS
+  } catch {
+    return NVIDIA_CHAT_COMPLETIONS
+  }
+  return normalized.endsWith('/chat/completions') ? normalized : normalized + '/chat/completions'
+}
+
 async function requestCompletion(base, key, payload, label) {
-  const response = await fetch(base + '/chat/completions', {
+  const endpoint = completionEndpoint(base)
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -65,13 +79,13 @@ async function requestCompletion(base, key, payload, label) {
   const contentType = response.headers.get('content-type') || ''
   const text = await response.text()
   if (!response.ok || !contentType.toLowerCase().includes('application/json')) {
-    console.error(`${label} provider response`, { status: response.status, contentType, body: text.slice(0, 2000) })
+    console.error(`${label} provider response`, { endpoint, status: response.status, contentType, body: text.slice(0, 2000) })
     return { response, data: null, error: text || `Provider returned HTTP ${response.status}` }
   }
   try {
     return { response, data: JSON.parse(text), error: null }
   } catch (error) {
-    console.error(`${label} provider returned invalid JSON`, { status: response.status, contentType, body: text.slice(0, 2000), error: error.message })
+    console.error(`${label} provider returned invalid JSON`, { endpoint, status: response.status, contentType, body: text.slice(0, 2000), error: error.message })
     return { response, data: null, error: 'Provider returned invalid JSON' }
   }
 }
@@ -96,7 +110,7 @@ app.post('/api/keys', (req, res) => {
       id,
       name: String(body.name || 'Key').slice(0, 80),
       key: String(body.key || ''),
-      base: String(body.base || 'https://api.openai.com/v1').replace(/\/$/, ''),
+      base: String(body.base || 'https://api.openai.com/v1').trim().replace(/\/+$/, ''),
       model: String(body.model || 'gpt-4o-mini'),
     }
     if (!row.key) return res.status(400).json({ error: 'Key required' })
@@ -124,7 +138,7 @@ app.post('/api/keys', (req, res) => {
         ...k,
         name: body.name != null ? body.name : k.name,
         key: body.key ? body.key : k.key,
-        base: body.base || k.base,
+        base: body.base != null ? String(body.base).trim().replace(/\/+$/, '') : k.base,
         model: body.model || k.model,
       }
     })

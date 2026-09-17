@@ -2,7 +2,7 @@ import express from 'express'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { loadPay } from './house-os/lib/payStore.js'
-import { saveSales, loadHub } from './house-os/lib/hubStore.js'
+import { observe, saveSales, loadHub } from './house-os/lib/hubStore.js'
 import { activeKey as houseKey } from './house-os/lib/keysStore.js'
 import { authInfo, clearSessionCookie, login, requireRole, setSessionCookie } from './house-os/lib/auth.js'
 
@@ -39,6 +39,7 @@ app.use('/api', (req, res, next) => {
 })
 
 app.get('/api/pay', (_req, res) => res.json(loadPay()))
+app.get('/api/hub', (_req, res) => res.json(observe()))
 app.get('/api/team', (_req, res) => res.json((loadHub().team || []).filter((t) => t.desk === 'sales' && t.active !== false)))
 app.get('/api/sync', (_req, res) => res.json({ sales: loadHub().sales, updated: loadHub().updated?.sales }))
 app.post('/api/sync', (req, res) => {

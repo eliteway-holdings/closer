@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://closer-iy3o.onrender.com/api/:path*"
+    }
+  ]
+}

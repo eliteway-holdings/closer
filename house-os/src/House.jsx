@@ -36,6 +36,7 @@ export default function House() {
       }
       setPending(Array.isArray(d.pending) ? d.pending : [])
       setNote(approved ? 'AI action approved on House.' : 'AI action rejected and removed.')
+      await refreshPending()
       refresh()
     } catch (error) {
       console.error('Approval request failed:', error)

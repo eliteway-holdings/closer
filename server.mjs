@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url'
 import { loadPay } from './house-os/lib/payStore.js'
 import { observe, saveSales, loadHub } from './house-os/lib/hubStore.js'
 import { loadStore, saveStore, masked, activeKey as houseKey } from './house-os/lib/keysStore.js'
-import { listPendingActions, applyPendingAction, remember, addCal, addCommit } from './house-os/lib/partnerStore.js'
+import { loadPartner, savePartner, listPendingActions, applyPendingAction, remember, addCal, addCommit } from './house-os/lib/partnerStore.js'
 import { authInfo, clearSessionCookie, login, requireRole, setSessionCookie } from './house-os/lib/auth.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -87,15 +87,19 @@ app.post('/api/keys', (req, res) => {
   res.status(400).json({ error: 'Unknown op' })
 })
 app.get('/api/partner/pending', (_req, res) => {
-  const pending = listPendingActions()
-  if (!pending.length) pending.push({
-    id: 'mock-partner-1',
-    type: 'calendar',
-    title: 'Example Partner follow-up',
-    when: 'Tomorrow at 10:00',
-    who: 'Example Partner',
-    status: 'pending',
-  })
+  const partner = loadPartner()
+  const pending = partner.pending || []
+  if (!pending.length && !partner.mockApprovalResolved) {
+    pending.push({
+      id: 'mock-partner-1',
+      type: 'calendar',
+      title: 'Example Partner follow-up',
+      when: 'Tomorrow at 10:00',
+      who: 'Example Partner',
+      status: 'pending',
+    })
+    savePartner({ ...partner, pending })
+  }
   res.json({ pending })
 })
 app.post('/api/partner/approve', (req, res) => {
@@ -105,6 +109,10 @@ app.post('/api/partner/approve', (req, res) => {
   try {
     if (id) {
       const partner = applyPendingAction(id, approve)
+      if (id === 'mock-partner-1') {
+        partner.mockApprovalResolved = true
+        savePartner(partner)
+      }
       return res.json({ ok: true, approved: approve, partner, pending: partner.pending || [] })
     }
     if (!action || typeof action !== 'object') return res.status(400).json({ error: 'Action required' })

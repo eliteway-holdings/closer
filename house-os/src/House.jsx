@@ -67,8 +67,9 @@ export default function House() {
 
   return (
     <div className="desk-shell pt-8 max-w-[1400px] mx-auto px-4 pb-24 min-h-screen">
-      {pending.length ? <div className="fixed inset-0 z-50 pointer-events-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-        <div className="glass relative z-10 max-w-xl w-full p-6 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+      {pending.length ? <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm pointer-events-none" aria-hidden="true" />
+        <div className="glass relative z-10 max-w-xl w-full p-6 pointer-events-auto">
           <p className="desk-kicker">House · approval queue</p>
           <h3 className="text-2xl font-black mt-2 mb-4">AI wants to act</h3>
           <div className="space-y-3">

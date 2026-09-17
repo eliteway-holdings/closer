@@ -1,7 +1,4 @@
 import { useEffect, useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY)
 
 export default function AuthGate({ allowedRoles, title, children }) {
   const [session, setSession] = useState(null)
@@ -10,12 +7,10 @@ export default function AuthGate({ allowedRoles, title, children }) {
   useEffect(() => { fetch('/api/session', { credentials: 'include' }).then((r) => r.json()).then(setSession).catch(() => setSession({ role: null })) }, [])
   async function submit(e) {
     e.preventDefault(); setError('')
-    const { data: profile, error: queryError } = await supabase.from('profiles').select('*').eq('username', form.username).eq('passcode', form.password).maybeSingle()
-    if (queryError || !profile) return setError('Invalid username or passcode')
     const response = await fetch('/api/login', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: form.username, password: form.password }) })
     if (!response.ok) return setError((await response.json().catch(() => ({}))).error || 'Could not create server session')
     const auth = await response.json()
-    setSession({ ...profile, role: auth.role, label: auth.label })
+    setSession({ username: form.username, role: auth.role, label: auth.label })
   }
   if (!session) return <div className="min-h-screen" />
   if (!allowedRoles.includes(session.role)) return session.role ? <Blocked title={title} role={session.label} /> : <Login title={title} form={form} setForm={setForm} submit={submit} error={error} />

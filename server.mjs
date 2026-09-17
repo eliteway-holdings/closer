@@ -1,10 +1,10 @@
 import express from 'express'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { loadPay } from '../house-os/lib/payStore.js'
-import { saveSales, loadHub } from '../house-os/lib/hubStore.js'
-import { activeKey as houseKey } from '../house-os/lib/keysStore.js'
-import { authInfo, clearSessionCookie, login, requireRole, setSessionCookie } from '../house-os/lib/auth.js'
+import { loadPay } from './house-os/lib/payStore.js'
+import { saveSales, loadHub } from './house-os/lib/hubStore.js'
+import { activeKey as houseKey } from './house-os/lib/keysStore.js'
+import { authInfo, clearSessionCookie, login, requireRole, setSessionCookie } from './house-os/lib/auth.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 4000

@@ -3,7 +3,8 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { loadPay } from './house-os/lib/payStore.js'
 import { observe, saveSales, loadHub } from './house-os/lib/hubStore.js'
-import { activeKey as houseKey } from './house-os/lib/keysStore.js'
+import { loadStore, saveStore, masked, activeKey as houseKey } from './house-os/lib/keysStore.js'
+import { listPendingActions } from './house-os/lib/partnerStore.js'
 import { authInfo, clearSessionCookie, login, requireRole, setSessionCookie } from './house-os/lib/auth.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -38,6 +39,54 @@ app.use('/api', (req, res, next) => {
   return requireRole('executive', 'sales')(req, res, next)
 })
 
+app.get('/api/keys', (_req, res) => res.json(masked()))
+app.post('/api/keys', (req, res) => {
+  const cur = loadStore()
+  const body = req.body || {}
+  if (body.op === 'add') {
+    const id = 'k-' + Math.random().toString(36).slice(2, 8)
+    const row = {
+      id,
+      name: String(body.name || 'Key').slice(0, 80),
+      key: String(body.key || ''),
+      base: String(body.base || 'https://api.openai.com/v1').replace(/\/$/, ''),
+      model: String(body.model || 'gpt-4o-mini'),
+    }
+    if (!row.key) return res.status(400).json({ error: 'Key required' })
+    cur.list.push(row)
+    if (!cur.active) cur.active = id
+    saveStore(cur)
+    return res.json(masked())
+  }
+  if (body.op === 'active' && body.id) {
+    if (!cur.list.some((k) => k.id === body.id)) return res.status(404).json({ error: 'Missing' })
+    cur.active = body.id
+    saveStore(cur)
+    return res.json(masked())
+  }
+  if (body.op === 'remove' && body.id) {
+    cur.list = cur.list.filter((k) => k.id !== body.id)
+    if (cur.active === body.id) cur.active = cur.list[0]?.id || ''
+    saveStore(cur)
+    return res.json(masked())
+  }
+  if (body.op === 'change' && body.id) {
+    cur.list = cur.list.map((k) => {
+      if (k.id !== body.id) return k
+      return {
+        ...k,
+        name: body.name != null ? body.name : k.name,
+        key: body.key ? body.key : k.key,
+        base: body.base || k.base,
+        model: body.model || k.model,
+      }
+    })
+    saveStore(cur)
+    return res.json(masked())
+  }
+  res.status(400).json({ error: 'Unknown op' })
+})
+app.get('/api/partner/pending', (_req, res) => res.json({ pending: listPendingActions() }))
 app.get('/api/pay', (_req, res) => res.json(loadPay()))
 app.get('/api/hub', (_req, res) => res.json(observe()))
 app.get('/api/team', (_req, res) => res.json((loadHub().team || []).filter((t) => t.desk === 'sales' && t.active !== false)))

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url'
 import { loadPay } from './house-os/lib/payStore.js'
 import { observe, saveSales, loadHub } from './house-os/lib/hubStore.js'
 import { loadStore, saveStore, masked, activeKey as houseKey } from './house-os/lib/keysStore.js'
-import { loadPartner, savePartner, listPendingActions, applyPendingAction, remember, addCal, addCommit } from './house-os/lib/partnerStore.js'
+import { loadPartner, savePartner, listPendingActions, applyPendingAction, remember, addCal, addCommit, pushChat, queuePendingAction } from './house-os/lib/partnerStore.js'
 import { authInfo, clearSessionCookie, login, requireRole, setSessionCookie } from './house-os/lib/auth.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -102,6 +102,7 @@ app.get('/api/partner/pending', (_req, res) => {
   }
   res.json({ pending })
 })
+app.get('/api/partner', (_req, res) => res.json(loadPartner()))
 app.post('/api/partner/approve', (req, res) => {
   const action = req.body?.action
   const id = req.body?.id
@@ -141,6 +142,61 @@ Pretoria house. Products only: EWHTS R4500 setup + R1500/mo (clinics); white-lab
 WhatsApp first. Binary closes (08:00 or 12:00, YES or NOT NOW). Two pings then Lost. No invented funding or valuations. Proof allowed: 2.5M organic, 100 school halls.
 Reply JSON only: {"say":"what to send or speak now","why":"one line why","next":"stage move if any","wa":"short WhatsApp they can paste"}`
 
+const PARTNER = `You are Elite Way Holdings business partner on House. Founder only. Advance the house: partnerships, follow-ups, staff read, money from invoices not a bank login.
+Memory lives on House. Do not invent facts. Pretoria. No fake valuations.
+Return JSON only with fields: {"say":"full polished paragraph or short business update","actions":[{"type":"remember|calendar|commitment","k":"","v":"","title":"","when":"","who":"","what":""}],"suggestions":["full sentence action 1"]}`
+
+function formatPartnerText(value) {
+  const text = String(value || '').trim()
+  if (!text) return ''
+  return /[.!?]$/.test(text) ? text : text + '.'
+}
+
+app.post('/api/partner/chat', async (req, res) => {
+  const hk = houseKey()
+  const key = hk?.key || process.env.OPENAI_API_KEY || process.env.LLM_KEY
+  const base = String(hk?.base || process.env.LLM_BASE || 'https://api.openai.com/v1').replace(/\/$/, '')
+  const model = hk?.model || process.env.LLM_MODEL || 'gpt-4o-mini'
+  if (!key) return res.status(400).json({ error: 'Add a reasoning key on House first. Staff never hold it.' })
+  const msg = String(req.body?.message || '').slice(0, 8000)
+  if (!msg) return res.status(400).json({ error: 'Message required' })
+  const partner = loadPartner()
+  const context = [
+    'Elite Way Holdings, Pretoria. Do not invent facts.',
+    'Memory: ' + (partner.memory || []).slice(0, 30).map((m) => `${m.k}=${m.v}`).join(' | '),
+    'Calendar: ' + (partner.calendar || []).filter((c) => !c.done).map((c) => `${c.when} ${c.title}`).join('; '),
+    'Commitments: ' + (partner.commitments || []).filter((c) => !c.done).map((c) => `${c.who}:${c.what}`).join('; '),
+  ].join('\n')
+  pushChat('user', msg)
+  try {
+    const r = await fetch(base + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
+      body: JSON.stringify({
+        model,
+        temperature: 0.35,
+        max_tokens: 4096,
+        response_format: { type: 'json_object' },
+        messages: [{ role: 'system', content: PARTNER + '\n' + context }, ...(partner.chat || []).slice(-8).map((item) => ({ role: item.role === 'assistant' ? 'assistant' : 'user', content: item.content })), { role: 'user', content: msg }].slice(-16),
+      }),
+    })
+    const data = await r.json()
+    if (!r.ok) return res.status(r.status).json({ error: data?.error?.message || JSON.stringify(data) })
+    let spec
+    try { spec = JSON.parse(data.choices?.[0]?.message?.content || '{}') } catch { spec = { say: data.choices?.[0]?.message?.content || '' } }
+    const actions = Array.isArray(spec.actions) ? spec.actions.filter((action) => ['remember', 'calendar', 'commitment'].includes(action?.type)).slice(0, 10) : []
+    const suggestions = Array.isArray(spec.suggestions) ? spec.suggestions.map(formatPartnerText).filter(Boolean) : []
+    const say = [formatPartnerText(spec.say), suggestions.map((item) => '• ' + item).join('\n')].filter(Boolean).join('\n\n')
+    const updated = pushChat('assistant', say || JSON.stringify(spec))
+    let queued = updated
+    for (const action of actions) queued = queuePendingAction(action)
+    res.json({ spec: { ...spec, actions, suggestions, say }, partner: queued, pending: listPendingActions() })
+  } catch (e) {
+    console.error('Partner chat failed:', e)
+    res.status(502).json({ error: e.message || String(e) })
+  }
+})
+
 app.post('/api/coach', async (req, res) => {
   const hk = houseKey()
   const key = hk?.key || process.env.OPENAI_API_KEY || process.env.LLM_KEY
@@ -159,6 +215,7 @@ app.post('/api/coach', async (req, res) => {
       body: JSON.stringify({
         model,
         temperature: 0.4,
+        max_tokens: 4096,
         response_format: { type: 'json_object' },
         messages: [{ role: 'system', content: COACH + '\n' + extra }, ...history].slice(-14),
       }),

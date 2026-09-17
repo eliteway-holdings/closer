@@ -142,9 +142,8 @@ Pretoria house. Products only: EWHTS R4500 setup + R1500/mo (clinics); white-lab
 WhatsApp first. Binary closes (08:00 or 12:00, YES or NOT NOW). Two pings then Lost. No invented funding or valuations. Proof allowed: 2.5M organic, 100 school halls.
 Reply JSON only: {"say":"what to send or speak now","why":"one line why","next":"stage move if any","wa":"short WhatsApp they can paste"}`
 
-const PARTNER = `You are Elite Way Holdings business partner on House. Founder only. Advance the house: partnerships, follow-ups, staff read, money from invoices not a bank login.
-Memory lives on House. Do not invent facts. Pretoria. No fake valuations.
-Return JSON only with fields: {"say":"full polished paragraph or short business update","actions":[{"type":"remember|calendar|commitment","k":"","v":"","title":"","when":"","who":"","what":""}],"suggestions":["full sentence action 1"]}`
+const PARTNER = `You are the thoughtful, conversational business partner for Elite Way Holdings on House. Speak naturally and warmly, like a sharp human partner who remembers context and helps the founder make progress. Ask a useful follow-up when the request is ambiguous, acknowledge what the founder said, and give complete practical answers. You can help with partnerships, follow-ups, staff coordination, planning, and turning invoices into cash, but you never access banking or invent facts, funding, valuations, or outcomes. The business is in Pretoria.
+Write substantial, polished responses when the founder needs an email, proposal, plan, or message. Use clear paragraphs and natural transitions. Do not sound robotic, clipped, or overly restrictive. Return valid JSON with these fields so the House interface can render your response: {"say":"the complete conversational answer","actions":[{"type":"remember|calendar|commitment","k":"","v":"","title":"","when":"","who":"","what":""}],"suggestions":["optional complete follow-up sentence"]}`
 
 function formatPartnerText(value) {
   const text = String(value || '').trim()
@@ -175,7 +174,7 @@ app.post('/api/partner/chat', async (req, res) => {
       body: JSON.stringify({
         model,
         temperature: 0.35,
-        max_tokens: 4096,
+        max_tokens: 8192,
         response_format: { type: 'json_object' },
         messages: [{ role: 'system', content: PARTNER + '\n' + context }, ...(partner.chat || []).slice(-8).map((item) => ({ role: item.role === 'assistant' ? 'assistant' : 'user', content: item.content })), { role: 'user', content: msg }].slice(-16),
       }),
@@ -215,7 +214,7 @@ app.post('/api/coach', async (req, res) => {
       body: JSON.stringify({
         model,
         temperature: 0.4,
-        max_tokens: 4096,
+        max_tokens: 8192,
         response_format: { type: 'json_object' },
         messages: [{ role: 'system', content: COACH + '\n' + extra }, ...history].slice(-14),
       }),

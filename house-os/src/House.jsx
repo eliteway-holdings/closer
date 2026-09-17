@@ -282,8 +282,10 @@ function KeysPanel() {
 
   async function load() {
     try {
-      const r = await fetch('/api/keys')
-      setStore(await r.json())
+      const r = await fetch('/api/keys', { credentials: 'include' })
+      const next = await r.json()
+      setStore(next)
+      if (next.active) localStorage.setItem('house_active_key', next.active)
     } catch {
       setNote('Could not reach House API.')
     }
@@ -291,10 +293,11 @@ function KeysPanel() {
   useEffect(() => { load() }, [])
 
   async function post(body) {
-    const r = await fetch('/api/keys', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    const r = await fetch('/api/keys', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     const d = await r.json().catch(() => ({}))
     if (!r.ok) { setNote(d.error || 'Failed'); return }
     setStore(d)
+    if (d.active) localStorage.setItem('house_active_key', d.active)
     setNote('Saved. Marketing uses this key. Staff never see it.')
   }
 

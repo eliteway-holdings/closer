@@ -22,19 +22,25 @@ export default function House() {
   }
 
   async function actionPending(id, approved) {
-    const r = await fetch('/api/partner/approve', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, approve: approved }),
-    })
-    const d = await r.json().catch(() => ({ pending: [] }))
-    if (!r.ok) {
-      setNote(d.error || 'Approval failed.')
-      return
+    try {
+      const r = await fetch('/api/partner/approve', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, approve: approved }),
+      })
+      const d = await r.json().catch(() => ({ pending: [] }))
+      if (!r.ok) {
+        setNote(d.error || 'Approval failed.')
+        return
+      }
+      setPending(Array.isArray(d.pending) ? d.pending : [])
+      setNote(approved ? 'AI action approved on House.' : 'AI action rejected and removed.')
+      refresh()
+    } catch (error) {
+      console.error('Approval request failed:', error)
+      setNote('Approval failed. Could not reach House API.')
     }
-    setPending(Array.isArray(d.pending) ? d.pending : [])
-    setNote(approved ? 'AI action approved on House.' : 'AI action rejected and removed.')
-    refresh()
   }
 
   function refresh() {

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url'
 import { loadPay } from './house-os/lib/payStore.js'
 import { observe, saveSales, loadHub } from './house-os/lib/hubStore.js'
 import { loadStore, saveStore, masked, activeKey as houseKey } from './house-os/lib/keysStore.js'
-import { listPendingActions } from './house-os/lib/partnerStore.js'
+import { listPendingActions, applyPendingAction, remember, addCal, addCommit } from './house-os/lib/partnerStore.js'
 import { authInfo, clearSessionCookie, login, requireRole, setSessionCookie } from './house-os/lib/auth.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -97,6 +97,25 @@ app.get('/api/partner/pending', (_req, res) => {
     status: 'pending',
   })
   res.json({ pending })
+})
+app.post('/api/partner/approve', (req, res) => {
+  const action = req.body?.action
+  const id = req.body?.id
+  const approve = req.body?.approve !== false
+  try {
+    if (id) {
+      const partner = applyPendingAction(id, approve)
+      return res.json({ ok: true, approved: approve, partner, pending: partner.pending || [] })
+    }
+    if (!action || typeof action !== 'object') return res.status(400).json({ error: 'Action required' })
+    if (action.type === 'remember') return res.json({ ok: true, partner: remember([{ k: action.k, v: action.v }]), pending: listPendingActions() })
+    if (action.type === 'calendar') return res.json({ ok: true, partner: addCal([{ title: action.title, when: action.when, who: action.who }]), pending: listPendingActions() })
+    if (action.type === 'commitment') return res.json({ ok: true, partner: addCommit([{ who: action.who, what: action.what, when: action.when }]), pending: listPendingActions() })
+    return res.status(400).json({ error: 'Only House memory, calendar, and commitment actions can be approved here' })
+  } catch (e) {
+    console.error('Partner approval failed:', e)
+    return res.status(400).json({ error: e.message || String(e) })
+  }
 })
 app.get('/api/pay', (_req, res) => res.json(loadPay()))
 app.get('/api/hub', (_req, res) => res.json(observe()))

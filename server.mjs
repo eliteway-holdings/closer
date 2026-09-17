@@ -36,8 +36,22 @@ app.get('/api/session', (req, res) => res.json(authInfo(req) || { role: null }))
 app.post('/api/logout', (_req, res) => { clearSessionCookie(res); res.json({ ok: true }) })
 app.use('/api', (req, res, next) => {
   if (['/login', '/session', '/logout'].includes(req.path)) return next()
-  return requireRole('executive', 'sales')(req, res, next)
+  return requireRole('executive', 'sales', 'marketing')(req, res, next)
 })
+
+function reasoningKey() {
+  const stored = houseKey()
+  if (typeof stored?.key === 'string' && stored.key.trim()) return stored
+  const envKey = process.env.OPENAI_API_KEY || process.env.LLM_KEY
+  return envKey ? { key: envKey, base: process.env.LLM_BASE, model: process.env.LLM_MODEL } : null
+}
+
+function llmMessages(messages = []) {
+  return messages.filter((item) => item && typeof item.content === 'string').map((item) => ({
+    role: ['system', 'user', 'assistant'].includes(item.role) ? item.role : 'user',
+    content: item.content,
+  }))
+}
 
 app.get('/api/keys', (_req, res) => res.json(masked()))
 app.post('/api/keys', (req, res) => {
@@ -152,15 +166,15 @@ function formatPartnerText(value) {
 }
 
 app.post('/api/partner/chat', async (req, res) => {
-  const hk = houseKey()
-  const key = typeof hk?.key === 'string' && hk.key.trim() ? hk.key.trim() : process.env.OPENAI_API_KEY || process.env.LLM_KEY
+  const hk = reasoningKey()
+  const key = hk?.key
   const base = String(hk?.base || process.env.LLM_BASE || 'https://api.openai.com/v1').replace(/\/$/, '')
   const model = hk?.model || process.env.LLM_MODEL || 'gpt-4o-mini'
   if (!key) return res.status(400).json({ error: 'Add a reasoning key on House first. Staff never hold it.' })
   const msg = String(req.body?.message || '').slice(0, 8000)
   if (!msg) return res.status(400).json({ error: 'Message required' })
   const partner = loadPartner()
-  const history = Array.isArray(req.body?.messages) ? req.body.messages.filter((item) => item && ['user', 'assistant'].includes(item.role) && typeof item.content === 'string').slice(-12) : (partner.chat || []).slice(-8).map((item) => ({ role: item.role === 'assistant' ? 'assistant' : 'user', content: item.content }))
+  const history = Array.isArray(req.body?.messages) ? llmMessages(req.body.messages).filter((item) => item.role !== 'system').slice(-12) : llmMessages((partner.chat || []).slice(-8).map((item) => ({ role: item.role === 'assistant' ? 'assistant' : 'user', content: item.content })))
   const context = [
     'Elite Way Holdings, Pretoria. Do not invent facts.',
     'Memory: ' + (partner.memory || []).slice(0, 30).map((m) => `${m.k}=${m.v}`).join(' | '),
@@ -198,8 +212,8 @@ app.post('/api/partner/chat', async (req, res) => {
 })
 
 app.post('/api/coach', async (req, res) => {
-  const hk = houseKey()
-  const key = hk?.key || process.env.OPENAI_API_KEY || process.env.LLM_KEY
+  const hk = reasoningKey()
+  const key = hk?.key
   const base = String(hk?.base || process.env.LLM_BASE || 'https://api.openai.com/v1').replace(/\/$/, '')
   const model = hk?.model || process.env.LLM_MODEL || 'gpt-4o-mini'
   if (!key) return res.status(400).json({ error: 'House has not set a reasoning key. Founder adds it on House.' })
@@ -217,7 +231,7 @@ app.post('/api/coach', async (req, res) => {
         temperature: 0.4,
         max_tokens: 8192,
         response_format: { type: 'json_object' },
-        messages: [{ role: 'system', content: COACH + '\n' + extra }, ...history].slice(-14),
+        messages: [{ role: 'system', content: COACH + '\n' + extra }, ...llmMessages(history).filter((item) => item.role !== 'system')].slice(-14),
       }),
     })
     const data = await r.json()

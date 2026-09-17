@@ -88,7 +88,14 @@ app.post('/api/keys', (req, res) => {
 })
 app.get('/api/partner/pending', (_req, res) => {
   const pending = listPendingActions()
-  if (!pending.length) pending.push({ id: 'mock-partner-1', name: 'Example Partner', status: 'pending' })
+  if (!pending.length) pending.push({
+    id: 'mock-partner-1',
+    type: 'calendar',
+    title: 'Example Partner follow-up',
+    when: 'Tomorrow at 10:00',
+    who: 'Example Partner',
+    status: 'pending',
+  })
   res.json({ pending })
 })
 app.get('/api/pay', (_req, res) => res.json(loadPay()))

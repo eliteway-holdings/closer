@@ -53,6 +53,29 @@ function llmMessages(messages = []) {
   }))
 }
 
+async function requestCompletion(base, key, payload, label) {
+  const response = await fetch(base + '/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer ' + key,
+    },
+    body: JSON.stringify(payload),
+  })
+  const contentType = response.headers.get('content-type') || ''
+  const text = await response.text()
+  if (!response.ok || !contentType.toLowerCase().includes('application/json')) {
+    console.error(`${label} provider response`, { status: response.status, contentType, body: text.slice(0, 2000) })
+    return { response, data: null, error: text || `Provider returned HTTP ${response.status}` }
+  }
+  try {
+    return { response, data: JSON.parse(text), error: null }
+  } catch (error) {
+    console.error(`${label} provider returned invalid JSON`, { status: response.status, contentType, body: text.slice(0, 2000), error: error.message })
+    return { response, data: null, error: 'Provider returned invalid JSON' }
+  }
+}
+
 app.get('/api/credentials', (_req, res) => res.json(credentialsForHouse()))
 app.post('/api/credentials', (req, res) => {
   try {
@@ -212,19 +235,14 @@ app.post('/api/reason', async (req, res) => {
   const history = llmMessages(Array.isArray(req.body?.messages) ? req.body.messages : []).slice(-14)
   const job = String(req.body?.job || 'general')
   try {
-    const response = await fetch(base + '/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
-      body: JSON.stringify({
+    const { response, data, error } = await requestCompletion(base, key, {
         model,
         temperature: 0.4,
         max_tokens: 16384,
         response_format: { type: 'json_object' },
         messages: [{ role: 'system', content: REASONING + '\nRequested job: ' + job }, ...history],
-      }),
-    })
-    const data = await response.json()
-    if (!response.ok) return res.status(response.status).json({ error: data?.error?.message || JSON.stringify(data) })
+      }, 'Reasoning')
+    if (error) return res.status(response.status || 502).json({ error })
     const raw = data.choices?.[0]?.message?.content || '{}'
     let spec
     try { spec = JSON.parse(raw) } catch { spec = { refuse: false, say: raw, body: raw } }
@@ -253,19 +271,14 @@ app.post('/api/partner/chat', async (req, res) => {
   ].join('\n')
   pushChat('user', msg)
   try {
-    const r = await fetch(base + '/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
-      body: JSON.stringify({
+    const { response, data, error } = await requestCompletion(base, key, {
         model,
         temperature: 0.35,
         max_tokens: 16384,
         response_format: { type: 'json_object' },
         messages: [{ role: 'system', content: PARTNER + '\n' + context }, ...history, { role: 'user', content: msg }].slice(-16),
-      }),
-    })
-    const data = await r.json()
-    if (!r.ok) return res.status(r.status).json({ error: data?.error?.message || JSON.stringify(data) })
+      }, 'Partner')
+    if (error) return res.status(response.status || 502).json({ error })
     let spec
     try { spec = JSON.parse(data.choices?.[0]?.message?.content || '{}') } catch { spec = { say: data.choices?.[0]?.message?.content || '' } }
     const actions = Array.isArray(spec.actions) ? spec.actions.filter((action) => ['remember', 'calendar', 'commitment'].includes(action?.type)).slice(0, 10) : []
@@ -293,19 +306,14 @@ app.post('/api/coach', async (req, res) => {
     ? `Live card: ${lead.name || ''} · ${lead.company || ''} · stage ${lead.stage || ''} · offer ${lead.offer || ''} · R${lead.amount || ''}.`
     : ''
   try {
-    const r = await fetch(base + '/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
-      body: JSON.stringify({
+    const { response, data, error } = await requestCompletion(base, key, {
         model,
         temperature: 0.4,
         max_tokens: 8192,
         response_format: { type: 'json_object' },
         messages: [{ role: 'system', content: COACH + '\n' + extra }, ...llmMessages(history).filter((item) => item.role !== 'system')].slice(-14),
-      }),
-    })
-    const data = await r.json()
-    if (!r.ok) return res.status(r.status).json({ error: data?.error?.message || JSON.stringify(data) })
+      }, 'Coach')
+    if (error) return res.status(response.status || 502).json({ error })
     const raw = data.choices?.[0]?.message?.content || '{}'
     let spec
     try { spec = JSON.parse(raw) } catch { spec = { say: raw } }

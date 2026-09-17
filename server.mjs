@@ -153,13 +153,14 @@ function formatPartnerText(value) {
 
 app.post('/api/partner/chat', async (req, res) => {
   const hk = houseKey()
-  const key = hk?.key || process.env.OPENAI_API_KEY || process.env.LLM_KEY
+  const key = typeof hk?.key === 'string' && hk.key.trim() ? hk.key.trim() : process.env.OPENAI_API_KEY || process.env.LLM_KEY
   const base = String(hk?.base || process.env.LLM_BASE || 'https://api.openai.com/v1').replace(/\/$/, '')
   const model = hk?.model || process.env.LLM_MODEL || 'gpt-4o-mini'
   if (!key) return res.status(400).json({ error: 'Add a reasoning key on House first. Staff never hold it.' })
   const msg = String(req.body?.message || '').slice(0, 8000)
   if (!msg) return res.status(400).json({ error: 'Message required' })
   const partner = loadPartner()
+  const history = Array.isArray(req.body?.messages) ? req.body.messages.filter((item) => item && ['user', 'assistant'].includes(item.role) && typeof item.content === 'string').slice(-12) : (partner.chat || []).slice(-8).map((item) => ({ role: item.role === 'assistant' ? 'assistant' : 'user', content: item.content }))
   const context = [
     'Elite Way Holdings, Pretoria. Do not invent facts.',
     'Memory: ' + (partner.memory || []).slice(0, 30).map((m) => `${m.k}=${m.v}`).join(' | '),
@@ -174,9 +175,9 @@ app.post('/api/partner/chat', async (req, res) => {
       body: JSON.stringify({
         model,
         temperature: 0.35,
-        max_tokens: 8192,
+        max_tokens: 16384,
         response_format: { type: 'json_object' },
-        messages: [{ role: 'system', content: PARTNER + '\n' + context }, ...(partner.chat || []).slice(-8).map((item) => ({ role: item.role === 'assistant' ? 'assistant' : 'user', content: item.content })), { role: 'user', content: msg }].slice(-16),
+        messages: [{ role: 'system', content: PARTNER + '\n' + context }, ...history, { role: 'user', content: msg }].slice(-16),
       }),
     })
     const data = await r.json()

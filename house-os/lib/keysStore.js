@@ -7,7 +7,11 @@ const FILE = path.join(dir, 'keys.json')
 
 export function loadStore() {
   try {
-    return JSON.parse(fs.readFileSync(FILE, 'utf8'))
+    const value = JSON.parse(fs.readFileSync(FILE, 'utf8'))
+    return {
+      active: typeof value.active === 'string' ? value.active : '',
+      list: Array.isArray(value.list) ? value.list.filter((key) => key && typeof key === 'object') : [],
+    }
   } catch {
     return { active: '', list: [] }
   }
@@ -20,7 +24,8 @@ export function saveStore(d) {
 
 export function activeKey() {
   const d = loadStore()
-  return d.list.find((k) => k.id === d.active) || d.list[0] || null
+  const selected = d.list.find((key) => key.id === d.active) || d.list.find((key) => key.key)
+  return selected?.key ? selected : null
 }
 
 export function masked() {

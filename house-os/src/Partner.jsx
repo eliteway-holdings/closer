@@ -9,6 +9,7 @@ export default function Partner() {
   const [actions, setActions] = useState([])
   const [threads, setThreads] = useState([{ id: 'thread-1', title: 'New conversation', messages: [] }])
   const [activeThreadId, setActiveThreadId] = useState('thread-1')
+  const [sessionId, setSessionId] = useState(() => `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
 
   function validPack(value) {
     const p = value && typeof value === 'object' ? value : {}
@@ -39,6 +40,7 @@ export default function Partner() {
 
   function startFreshConversation() {
     const next = makeThread('New conversation')
+    setSessionId(`session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
     setThreads((cur) => {
       const current = cur.find((t) => t.id === activeThreadId)
       if (current && current.messages.length) {
@@ -67,8 +69,9 @@ export default function Partner() {
     try {
       const r = await fetch('/api/partner/chat', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: q }),
+        body: JSON.stringify({ message: q, sessionId, messages: stagedMessages }),
       })
       const d = await r.json().catch(() => ({}))
       if (!r.ok) throw new Error(d.error || 'Partner failed')

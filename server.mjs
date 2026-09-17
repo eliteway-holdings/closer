@@ -1,11 +1,11 @@
 import express from 'express'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { loadPay } from './house-os/lib/payStore.js'
-import { observe, saveSales, loadHub } from './house-os/lib/hubStore.js'
+import { loadPay, savePay } from './house-os/lib/payStore.js'
+import { observe, addMember, patchMember, removeMember, saveSales, loadHub } from './house-os/lib/hubStore.js'
 import { loadStore, saveStore, masked, activeKey as houseKey } from './house-os/lib/keysStore.js'
-import { loadPartner, savePartner, listPendingActions, applyPendingAction, remember, addCal, addCommit, pushChat, queuePendingAction } from './house-os/lib/partnerStore.js'
-import { authInfo, clearSessionCookie, login, requireRole, setSessionCookie } from './house-os/lib/auth.js'
+import { loadPartner, savePartner, listPendingActions, applyPendingAction, remember, addCal, addCommit, addTranscript, pushChat, queuePendingAction, toggleCal, toggleCommit } from './house-os/lib/partnerStore.js'
+import { authInfo, clearSessionCookie, credentialsForHouse, login, requireRole, setSessionCookie, updateCredentials } from './house-os/lib/auth.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 4000
@@ -52,6 +52,16 @@ function llmMessages(messages = []) {
     content: item.content,
   }))
 }
+
+app.get('/api/credentials', (_req, res) => res.json(credentialsForHouse()))
+app.post('/api/credentials', (req, res) => {
+  try {
+    updateCredentials(req.body)
+    return res.json(credentialsForHouse())
+  } catch (e) {
+    return res.status(400).json({ error: e.message || String(e) })
+  }
+})
 
 app.get('/api/keys', (_req, res) => res.json(masked()))
 app.post('/api/keys', (req, res) => {
@@ -117,6 +127,20 @@ app.get('/api/partner/pending', (_req, res) => {
   res.json({ pending })
 })
 app.get('/api/partner', (_req, res) => res.json(loadPartner()))
+app.post('/api/partner', (req, res) => {
+  const body = req.body || {}
+  try {
+    if (body.op === 'remember') return res.json(remember(Array.isArray(body.items) ? body.items : []))
+    if (body.op === 'cal') return res.json(addCal(Array.isArray(body.items) ? body.items : []))
+    if (body.op === 'commit') return res.json(addCommit(Array.isArray(body.items) ? body.items : []))
+    if (body.op === 'transcript') return res.json(addTranscript(body.name, body.text))
+    if (body.op === 'toggleCal') return res.json(toggleCal(body.id))
+    if (body.op === 'toggleCommit') return res.json(toggleCommit(body.id))
+  } catch (e) {
+    return res.status(400).json({ error: e.message || String(e) })
+  }
+  return res.status(400).json({ error: 'Unknown op' })
+})
 app.post('/api/partner/approve', (req, res) => {
   const action = req.body?.action
   const id = req.body?.id
@@ -141,8 +165,20 @@ app.post('/api/partner/approve', (req, res) => {
   }
 })
 app.get('/api/pay', (_req, res) => res.json(loadPay()))
+app.post('/api/pay', (req, res) => res.json(savePay(req.body || {})))
 app.get('/api/hub', (_req, res) => res.json(observe()))
 app.get('/api/team', (_req, res) => res.json((loadHub().team || []).filter((t) => t.desk === 'sales' && t.active !== false)))
+app.post('/api/team', (req, res) => {
+  const body = req.body || {}
+  try {
+    if (body.op === 'add') return res.json(addMember(body))
+    if (body.op === 'patch' && body.id) return res.json(patchMember(body.id, body.patch || {}))
+    if (body.op === 'remove' && body.id) return res.json(removeMember(body.id))
+  } catch (e) {
+    return res.status(400).json({ error: e.message || String(e) })
+  }
+  return res.status(400).json({ error: 'Unknown op' })
+})
 app.get('/api/sync', (_req, res) => res.json({ sales: loadHub().sales, updated: loadHub().updated?.sales }))
 app.post('/api/sync', (req, res) => {
   const sales = req.body?.sales
@@ -164,6 +200,40 @@ function formatPartnerText(value) {
   if (!text) return ''
   return /[.!?]$/.test(text) ? text : text + '.'
 }
+
+const REASONING = `You are Elite Way Holdings' conversational creative and communications partner. Be natural, specific, warm, and useful. Create complete, polished work that is ready to send or publish. Never invent funding, valuations, proof, or company facts. Return valid JSON with the fields appropriate to the requested job, including say and, for email or WhatsApp, subject and body.`
+
+app.post('/api/reason', async (req, res) => {
+  const hk = reasoningKey()
+  const key = hk?.key
+  const base = String(hk?.base || process.env.LLM_BASE || 'https://api.openai.com/v1').replace(/\/$/, '')
+  const model = hk?.model || process.env.LLM_MODEL || 'gpt-4o-mini'
+  if (!key) return res.status(400).json({ error: 'House has not set a reasoning key. Founder adds it on House.' })
+  const history = llmMessages(Array.isArray(req.body?.messages) ? req.body.messages : []).slice(-14)
+  const job = String(req.body?.job || 'general')
+  try {
+    const response = await fetch(base + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
+      body: JSON.stringify({
+        model,
+        temperature: 0.4,
+        max_tokens: 16384,
+        response_format: { type: 'json_object' },
+        messages: [{ role: 'system', content: REASONING + '\nRequested job: ' + job }, ...history],
+      }),
+    })
+    const data = await response.json()
+    if (!response.ok) return res.status(response.status).json({ error: data?.error?.message || JSON.stringify(data) })
+    const raw = data.choices?.[0]?.message?.content || '{}'
+    let spec
+    try { spec = JSON.parse(raw) } catch { spec = { refuse: false, say: raw, body: raw } }
+    return res.json({ spec, usage: data.usage || null })
+  } catch (e) {
+    console.error('Reasoning request failed:', e)
+    return res.status(502).json({ error: e.message || String(e) })
+  }
+})
 
 app.post('/api/partner/chat', async (req, res) => {
   const hk = reasoningKey()

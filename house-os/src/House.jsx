@@ -67,8 +67,8 @@ export default function House() {
 
   return (
     <div className="desk-shell pt-8 max-w-[1400px] mx-auto px-4 pb-24 min-h-screen">
-      {pending.length ? <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-        <div className="glass max-w-xl w-full p-6">
+      {pending.length ? <div className="fixed inset-0 z-50 pointer-events-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="glass relative z-10 max-w-xl w-full p-6 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
           <p className="desk-kicker">House · approval queue</p>
           <h3 className="text-2xl font-black mt-2 mb-4">AI wants to act</h3>
           <div className="space-y-3">
@@ -79,8 +79,8 @@ export default function House() {
                   {item.type === 'remember' ? `${item.k}: ${item.v}` : item.type === 'calendar' ? `${item.title} · ${item.when || 'no date'} · ${item.who || 'House'}` : `${item.who || 'House'}: ${item.what || ''} ${item.when ? `· ${item.when}` : ''}`}
                 </div>
                 <div className="mt-3 flex gap-2">
-                  <button type="button" className="btn-primary text-xs" onClick={() => actionPending(item.id, true)}>Approve</button>
-                  <button type="button" className="btn-ghost text-xs" onClick={() => actionPending(item.id, false)}>Reject</button>
+                  <button type="button" className="btn-primary relative z-20 pointer-events-auto text-xs" onClick={() => actionPending(item.id, true)}>Approve</button>
+                  <button type="button" className="btn-ghost relative z-20 pointer-events-auto text-xs" onClick={() => actionPending(item.id, false)}>Reject</button>
                 </div>
               </div>
             ))}

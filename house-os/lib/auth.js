@@ -8,6 +8,7 @@ const FILE = path.join(DATA_DIR, 'auth.json')
 const COOKIE = 'ewh_session'
 const SECRET = process.env.AUTH_SECRET || 'change-this-auth-secret-in-production'
 const COOKIE_DOMAIN = process.env.AUTH_COOKIE_DOMAIN || ''
+const CROSS_SITE_COOKIE = process.env.AUTH_COOKIE_SAMESITE?.toLowerCase() === 'none' || Boolean(process.env.CORS_ORIGINS)
 const DEFAULT_USERNAME = process.env.AUTH_USERNAME || 'Elite Way26'
 
 const ROLE_LABELS = {
@@ -104,12 +105,16 @@ export function updateCredentials(body = {}) {
 
 export function setSessionCookie(res, token) {
   const domain = COOKIE_DOMAIN ? `; Domain=${COOKIE_DOMAIN}` : ''
-  res.setHeader('Set-Cookie', `${COOKIE}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=43200${domain}`)
+  const sameSite = CROSS_SITE_COOKIE ? 'None' : 'Lax'
+  const secure = CROSS_SITE_COOKIE ? '; Secure' : ''
+  res.setHeader('Set-Cookie', `${COOKIE}=${token}; HttpOnly; SameSite=${sameSite}; Path=/; Max-Age=43200${secure}${domain}`)
 }
 
 export function clearSessionCookie(res) {
   const domain = COOKIE_DOMAIN ? `; Domain=${COOKIE_DOMAIN}` : ''
-  res.setHeader('Set-Cookie', `${COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${domain}`)
+  const sameSite = CROSS_SITE_COOKIE ? 'None' : 'Lax'
+  const secure = CROSS_SITE_COOKIE ? '; Secure' : ''
+  res.setHeader('Set-Cookie', `${COOKIE}=; HttpOnly; SameSite=${sameSite}; Path=/; Max-Age=0${secure}${domain}`)
 }
 
 export function requireRole(...allowed) {

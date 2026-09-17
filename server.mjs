@@ -11,6 +11,19 @@ const PORT = process.env.PORT || 4000
 const DIST = path.join(__dirname, 'dist')
 const app = express()
 app.use(express.json({ limit: '4mb' }))
+const corsOrigins = new Set(String(process.env.CORS_ORIGINS || '').split(',').map((origin) => origin.trim()).filter(Boolean))
+app.use((req, res, next) => {
+  const origin = req.headers.origin
+  if (origin && corsOrigins.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+    res.setHeader('Access-Control-Allow-Credentials', 'true')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+    res.setHeader('Vary', 'Origin')
+  }
+  if (req.method === 'OPTIONS') return res.sendStatus(204)
+  next()
+})
 
 app.post('/api/login', (req, res) => {
   const result = login(req.body?.username, req.body?.password)

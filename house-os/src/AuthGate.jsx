@@ -17,7 +17,10 @@ export default function AuthGate({ allowedRoles, title, children }) {
     setError('')
     const { data: profile, error: queryError } = await supabase.from('profiles').select('*').eq('username', form.username).eq('passcode', form.password).maybeSingle()
     if (queryError || !profile) return setError('Invalid username or passcode')
-    setSession({ ...profile, role: profile.role, label: profile.label || profile.role })
+    const response = await fetch('/api/login', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: form.username, password: form.password }) })
+    if (!response.ok) return setError((await response.json().catch(() => ({}))).error || 'Could not create server session')
+    const auth = await response.json()
+    setSession({ ...profile, role: auth.role, label: auth.label })
   }
 
   if (!session) return <div className="min-h-screen" />

@@ -676,6 +676,55 @@ export default function Sales() {
       .replace(/\n/g, ' ')
   }
 
+  function htmlEscape(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+  }
+
+  function invoiceHtml(invoice) {
+    const pay = db.pay || {}
+    const quote = invoice.kind === 'quote'
+    const rows = Array.isArray(invoice.items) && invoice.items.length
+      ? invoice.items
+      : [{ name: invoice.offer?.name || 'Service', amount: Number(invoice.amount || 0) }]
+    const rowHtml = rows.map((row) => `<tr><td>${htmlEscape(row.name || 'Service')}</td><td class="money">R${Number(row.amount || 0).toLocaleString('en-ZA')}</td></tr>`).join('')
+    const paymentHtml = quote ? '<p class="muted">This is a quote, not a tax invoice. Figures hold for 14 days. No amount is due until you accept and we send an invoice.</p>' : `
+      <h2>Where to pay</h2>
+      <div class="payment">
+        <p><span>Bank</span> ${htmlEscape(pay.bank || 'Set on House')}</p>
+        <p><span>Account name</span> ${htmlEscape(pay.accountName || '—')}</p>
+        <p><span>Account number</span> ${htmlEscape(pay.accountNumber || '—')}</p>
+        <p><span>Branch</span> ${htmlEscape(pay.branch || '—')}</p>
+        <p><span>Type</span> ${htmlEscape(pay.type || '—')}</p>
+        <p><span>Reference</span> ${htmlEscape(pay.reference || invoice.id || '—')}</p>
+        ${pay.extra ? `<p class="muted">${htmlEscape(pay.extra)}</p>` : ''}
+      </div>`
+    return `<!doctype html><html><head><meta charset="utf-8"><title>${quote ? 'Quote' : 'Invoice'} ${htmlEscape(invoice.id)}</title>
+      <style>
+        @page { size: A4; margin: 0; } * { box-sizing: border-box; } body { margin: 0; background: #e8e8ed; color: #111; font: 14px Arial, sans-serif; }
+        .page { width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff; } .header { display: flex; justify-content: space-between; gap: 24px; padding: 28px 34px; background: #07060c; color: #fff; }
+        .brand { display: flex; align-items: center; gap: 14px; } .brand-mark { width: 56px; height: 56px; object-fit: contain; } .brand-name { font-size: 19px; font-weight: 800; letter-spacing: .06em; } .small { color: #b9b7c2; font-size: 11px; margin-top: 5px; }
+        .document { text-align: right; } .document-type { color: #d4af37; font-size: 11px; letter-spacing: .24em; } .document-id { font-weight: 700; margin-top: 8px; } .content { padding: 34px; } .eyebrow, h2 { color: #666; font-size: 10px; letter-spacing: .16em; text-transform: uppercase; } h2 { margin: 28px 0 10px; }
+        .bill-name { font-size: 18px; font-weight: 700; margin-top: 5px; } .muted { color: #666; line-height: 1.5; } table { width: 100%; border-collapse: collapse; margin: 30px 0 24px; } th, td { padding: 11px 10px; border-bottom: 1px solid #ddd; text-align: left; } th { background: #f4f4f6; } .money { text-align: right; white-space: nowrap; } .total td { border-bottom: 0; font-size: 17px; font-weight: 800; padding-top: 16px; }
+        .payment { border: 1px solid #ddd; padding: 15px; } .payment p { margin: 5px 0; } .payment span { color: #777; display: inline-block; min-width: 125px; } .footer { padding: 0 34px 30px; color: #777; font-size: 10px; } @media print { body { background: #fff; } .page { width: 100%; } }
+      </style></head><body><main class="page"><header class="header"><div class="brand"><img class="brand-mark" src="${htmlEscape(new URL('/logo-mark.png', window.location.origin).href)}" alt="Elite Way logo"><div><div class="brand-name">ELITE WAY HOLDINGS</div><div class="small">Reg. 2025 / 230114 / 07</div><div class="small">Pretoria, South Africa · info@eliteway.co.za · 076 342 5896</div></div></div><div class="document"><div class="document-type">${quote ? 'QUOTE' : 'INVOICE'}</div><div class="document-id">${htmlEscape(invoice.id)}</div><div class="small">${htmlEscape(invoice.date)}</div></div></header><section class="content"><div class="eyebrow">Bill to</div><div class="bill-name">${htmlEscape(invoice.lead?.name || '')}</div><div>${htmlEscape(invoice.lead?.company || '')}</div>${invoice.lead?.email ? `<div class="muted">${htmlEscape(invoice.lead.email)}</div>` : ''}<table><thead><tr><th>Description</th><th class="money">ZAR</th></tr></thead><tbody>${rowHtml}<tr><td>VAT 15%</td><td class="money">R${Number(invoice.vat || 0).toLocaleString('en-ZA')}</td></tr><tr class="total"><td>Total due</td><td class="money">R${Number(invoice.total || 0).toLocaleString('en-ZA')}</td></tr></tbody></table>${paymentHtml}${invoice.monthly ? `<p class="muted">Then R${Number(invoice.monthly).toLocaleString('en-ZA')} per month after the first month on this invoice.</p>` : ''}<p class="muted">Work starts when the invoice is paid.</p></section><footer class="footer">Elite Way Holdings · Reg. 2025 / 230114 / 07 · All rights reserved.</footer></main></body></html>`
+  }
+
+  function printInvoice(invoice) {
+    if (!invoice) return setPdfNote('Nothing to print.')
+    const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=900,height=1100')
+    if (!printWindow) return setPdfNote('Allow pop-ups to print the invoice.')
+    printWindow.document.open()
+    printWindow.document.write(invoiceHtml(invoice))
+    printWindow.document.close()
+    printWindow.focus()
+    printWindow.onload = () => printWindow.print()
+  }
+
   function invoiceToPdfBlob(invoice) {
     const pay = db.pay || {}
     const rows = Array.isArray(invoice.items) && invoice.items.length
@@ -1373,6 +1422,7 @@ export default function Sales() {
                   }
                   downloadPdf(invoice)
                 }}>Download PDF</button>
+                <button type="button" className="btn-ghost text-sm" onClick={() => printInvoice(inv && inv.id !== 'PREVIEW' ? inv : buildInvoice(form))}>Print / save PDF</button>
               </div>
             </form>
             {(db.quotes || []).map((i) => (
@@ -1476,6 +1526,7 @@ export default function Sales() {
               }
               downloadPdf(invoice)
             }}>Download this PDF</button>
+            <button type="button" className="btn-ghost mt-2 text-sm" onClick={() => printInvoice(inv && inv.id !== 'PREVIEW' ? inv : buildInvoice(form))}>Print / save styled PDF</button>
           </div>
         </div>
       )}

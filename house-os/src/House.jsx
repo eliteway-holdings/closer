@@ -4,6 +4,18 @@ import Partner from './Partner.jsx'
 const OPEN = true
 const STAGES = ['WhatsApp', 'Call', 'Demo', 'Invoice', 'Won', 'Lost']
 const MSTAT = ['Idea', 'Assets', 'Review', 'Ready', 'Posted']
+const API_KEY_DRAFT = 'ew-house-api-key-draft'
+
+const DEFAULT_KEY_FORM = { name: '', key: '', base: 'https://api.openai.com/v1', model: 'gpt-4o-mini' }
+
+function loadKeyDraft() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(API_KEY_DRAFT) || 'null')
+    return saved && typeof saved === 'object' ? { ...DEFAULT_KEY_FORM, ...saved } : DEFAULT_KEY_FORM
+  } catch {
+    return DEFAULT_KEY_FORM
+  }
+}
 
 export default function House() {
   const [seat, setSeat] = useState('observe')
@@ -277,7 +289,7 @@ function PayPanel() {
 
 function KeysPanel() {
   const [store, setStore] = useState({ active: '', list: [] })
-  const [form, setForm] = useState({ name: '', key: '', base: 'https://api.openai.com/v1', model: 'gpt-4o-mini' })
+  const [form, setForm] = useState(loadKeyDraft)
   const [note, setNote] = useState('')
 
   async function load() {
@@ -291,6 +303,9 @@ function KeysPanel() {
     }
   }
   useEffect(() => { load() }, [])
+  useEffect(() => {
+    localStorage.setItem(API_KEY_DRAFT, JSON.stringify(form))
+  }, [form])
 
   async function post(body) {
     const r = await fetch('/api/keys', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -298,12 +313,12 @@ function KeysPanel() {
     if (!r.ok) { setNote(d.error || 'Failed'); return }
     setStore(d)
     if (d.active) localStorage.setItem('house_active_key', d.active)
-    setNote('Saved. Marketing uses this key. Staff never see it.')
+    setNote('Saved. This browser will remember the key for the next refresh.')
   }
 
   return (
     <div className="mt-10 grid lg:grid-cols-2 gap-8">
-      <form className="glass p-6 grid gap-3 text-sm" onSubmit={(e) => { e.preventDefault(); post({ op: 'add', ...form }); setForm({ ...form, key: '', name: '' }) }}>
+      <form className="glass p-6 grid gap-3 text-sm" onSubmit={(e) => { e.preventDefault(); post({ op: 'add', ...form }) }}>
         <p className="desk-kicker">House · API keys</p>
         <h2 className="text-2xl font-black">Manage reasoning keys</h2>
         <p className="text-white/55">Staff desks do not hold keys. Add / switch / remove here.</p>

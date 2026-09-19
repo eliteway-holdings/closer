@@ -8,6 +8,7 @@ import { loadPartner, savePartner, listPendingActions, applyPendingAction, remem
 import { authInfo, clearSessionCookie, credentialsForHouse, login, requireRole, setSessionCookie, updateCredentials } from './house-os/lib/auth.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const DEPLOY_VERSION = '2026-09-19-render-refresh-1'
 const PORT = process.env.PORT || 4000
 const DIST = path.join(__dirname, 'dist')
 const app = express()

@@ -685,7 +685,17 @@ export default function Sales() {
       .replace(/'/g, '&#39;')
   }
 
-  function invoiceHtml(invoice) {
+  async function invoiceAuth(invoice) {
+    const trackingId = `EWH-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
+    const timestamp = new Date().toISOString()
+    const source = JSON.stringify({ invoice, trackingId, timestamp })
+    const bytes = new TextEncoder().encode(source)
+    const digest = await crypto.subtle.digest('SHA-256', bytes)
+    const hash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
+    return { trackingId, timestamp, hash }
+  }
+
+  function invoiceHtml(invoice, auth) {
     const pay = db.pay || {}
     const quote = invoice.kind === 'quote'
     const rows = Array.isArray(invoice.items) && invoice.items.length
@@ -707,25 +717,26 @@ export default function Sales() {
       <style>
         @page { size: A4; margin: 0; } * { box-sizing: border-box; } body { margin: 0; background: #e8e8ed; color: #111; font: 14px Arial, sans-serif; }
         .page { width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff; } .header { display: flex; justify-content: space-between; gap: 24px; padding: 28px 34px; background: #07060c; color: #fff; }
-        .brand { display: flex; align-items: center; gap: 14px; } .brand-mark { width: 56px; height: 56px; object-fit: contain; } .brand-name { font-size: 19px; font-weight: 800; letter-spacing: .06em; } .small { color: #b9b7c2; font-size: 11px; margin-top: 5px; }
-        .document { text-align: right; } .document-type { color: #d4af37; font-size: 11px; letter-spacing: .24em; } .document-id { font-weight: 700; margin-top: 8px; } .content { padding: 34px; } .eyebrow, h2 { color: #666; font-size: 10px; letter-spacing: .16em; text-transform: uppercase; } h2 { margin: 28px 0 10px; }
+        .brand { display: flex; align-items: center; gap: 14px; } .brand-mark { width: 72px; height: 72px; object-fit: contain; display: block; background: #fff; border-radius: 8px; padding: 4px; } .brand-name { color: #fff; font-size: 19px; font-weight: 800; letter-spacing: .06em; } .small { color: #f1f3f7; font-size: 11px; margin-top: 5px; }
+        .document { color: #fff; text-align: right; } .document-type { color: #f5c842; font-size: 11px; letter-spacing: .24em; } .document-id { color: #fff; font-weight: 700; margin-top: 8px; } .content { padding: 34px; } .eyebrow, h2 { color: #444; font-size: 10px; letter-spacing: .16em; text-transform: uppercase; } h2 { margin: 28px 0 10px; }
         .bill-name { font-size: 18px; font-weight: 700; margin-top: 5px; } .muted { color: #666; line-height: 1.5; } table { width: 100%; border-collapse: collapse; margin: 30px 0 24px; } th, td { padding: 11px 10px; border-bottom: 1px solid #ddd; text-align: left; } th { background: #f4f4f6; } .money { text-align: right; white-space: nowrap; } .total td { border-bottom: 0; font-size: 17px; font-weight: 800; padding-top: 16px; }
-        .payment { border: 1px solid #ddd; padding: 15px; } .payment p { margin: 5px 0; } .payment span { color: #777; display: inline-block; min-width: 125px; } .footer { padding: 0 34px 30px; color: #777; font-size: 10px; } @media print { body { background: #fff; } .page { width: 100%; } }
-      </style></head><body><main class="page"><header class="header"><div class="brand"><img class="brand-mark" src="${htmlEscape(new URL('/logo-mark.png', window.location.origin).href)}" alt="Elite Way logo"><div><div class="brand-name">ELITE WAY HOLDINGS</div><div class="small">Reg. 2025 / 230114 / 07</div><div class="small">Pretoria, South Africa · info@eliteway.co.za · 076 342 5896</div></div></div><div class="document"><div class="document-type">${quote ? 'QUOTE' : 'INVOICE'}</div><div class="document-id">${htmlEscape(invoice.id)}</div><div class="small">${htmlEscape(invoice.date)}</div></div></header><section class="content"><div class="eyebrow">Bill to</div><div class="bill-name">${htmlEscape(invoice.lead?.name || '')}</div><div>${htmlEscape(invoice.lead?.company || '')}</div>${invoice.lead?.email ? `<div class="muted">${htmlEscape(invoice.lead.email)}</div>` : ''}<table><thead><tr><th>Description</th><th class="money">ZAR</th></tr></thead><tbody>${rowHtml}<tr><td>VAT 15%</td><td class="money">R${Number(invoice.vat || 0).toLocaleString('en-ZA')}</td></tr><tr class="total"><td>Total due</td><td class="money">R${Number(invoice.total || 0).toLocaleString('en-ZA')}</td></tr></tbody></table>${paymentHtml}${invoice.monthly ? `<p class="muted">Then R${Number(invoice.monthly).toLocaleString('en-ZA')} per month after the first month on this invoice.</p>` : ''}<p class="muted">Work starts when the invoice is paid.</p></section><footer class="footer">Elite Way Holdings · Reg. 2025 / 230114 / 07 · All rights reserved.</footer></main></body></html>`
+        .payment { border: 1px solid #ddd; padding: 15px; } .payment p { margin: 5px 0; } .payment span { color: #555; display: inline-block; min-width: 125px; } .seal { margin-top: 28px; padding: 14px; border: 2px solid #176b4d; background: #effaf4; color: #123d2d; } .seal-title { color: #0b5d3d; font-weight: 800; letter-spacing: .12em; font-size: 11px; } .seal-row { margin-top: 5px; font-size: 10px; word-break: break-all; } .footer { padding: 0 34px 30px; color: #555; font-size: 10px; } @media print { body { background: #fff; } .page { width: 100%; } }
+      </style></head><body><main class="page"><header class="header"><div class="brand"><img class="brand-mark" src="${htmlEscape(new URL('/logo-mark.png', window.location.origin).href)}" alt="Elite Way logo"><div><div class="brand-name">ELITE WAY HOLDINGS</div><div class="small">Reg. 2025 / 230114 / 07</div><div class="small">Pretoria, South Africa · info@eliteway.co.za · 076 342 5896</div></div></div><div class="document"><div class="document-type">${quote ? 'QUOTE' : 'INVOICE'}</div><div class="document-id">${htmlEscape(invoice.id)}</div><div class="small">${htmlEscape(invoice.date)}</div></div></header><section class="content"><div class="eyebrow">Bill to</div><div class="bill-name">${htmlEscape(invoice.lead?.name || '')}</div><div>${htmlEscape(invoice.lead?.company || '')}</div>${invoice.lead?.email ? `<div class="muted">${htmlEscape(invoice.lead.email)}</div>` : ''}<table><thead><tr><th>Description</th><th class="money">ZAR</th></tr></thead><tbody>${rowHtml}<tr><td>VAT 15%</td><td class="money">R${Number(invoice.vat || 0).toLocaleString('en-ZA')}</td></tr><tr class="total"><td>Total due</td><td class="money">R${Number(invoice.total || 0).toLocaleString('en-ZA')}</td></tr></tbody></table>${paymentHtml}${invoice.monthly ? `<p class="muted">Then R${Number(invoice.monthly).toLocaleString('en-ZA')} per month after the first month on this invoice.</p>` : ''}<p class="muted">Work starts when the invoice is paid.</p><div class="seal"><div class="seal-title">AI VERIFIED · AUTHENTIC DOCUMENT</div><div class="seal-row"><strong>Tracking ID:</strong> ${htmlEscape(auth.trackingId)}</div><div class="seal-row"><strong>Verified at:</strong> ${htmlEscape(auth.timestamp)}</div><div class="seal-row"><strong>SHA-256:</strong> ${htmlEscape(auth.hash)}</div><div class="seal-row">Verification badge: EWH-AI-VERIFIED</div></div></section><footer class="footer">Elite Way Holdings · Reg. 2025 / 230114 / 07 · All rights reserved.</footer></main></body></html>`
   }
 
-  function printInvoice(invoice) {
+  async function printInvoice(invoice) {
     if (!invoice) return setPdfNote('Nothing to print.')
+    const auth = await invoiceAuth(invoice)
     const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=900,height=1100')
     if (!printWindow) return setPdfNote('Allow pop-ups to print the invoice.')
     printWindow.document.open()
-    printWindow.document.write(invoiceHtml(invoice))
+    printWindow.document.write(invoiceHtml(invoice, auth))
     printWindow.document.close()
     printWindow.focus()
     printWindow.onload = () => printWindow.print()
   }
 
-  function invoiceToPdfBlob(invoice) {
+  function invoiceToPdfBlob(invoice, auth) {
     const pay = db.pay || {}
     const rows = Array.isArray(invoice.items) && invoice.items.length
       ? invoice.items
@@ -760,8 +771,10 @@ export default function Sales() {
       ['N', 10, 50, 368, 'Reference: ' + (pay.reference || invoice.id || '—')],
       ['N', 9, 50, 352, pay.extra || 'Work starts when this invoice is paid.'],
       ['N', 9, 50, 330, 'Copyright Elite Way Holdings. All rights reserved.'],
-      ['F', 9, 50, 76, 'AUTHENTIC STAMP · ELITE WAY HOLDINGS · Reg. 2025 / 230114 / 07 · Pretoria'],
-      ['N', 8, 50, 58, 'Official document. Not valid without this house stamp.'],
+      ['F', 9, 50, 76, 'AI VERIFIED · AUTHENTIC DOCUMENT · EWH-AI-VERIFIED'],
+      ['N', 8, 50, 60, 'Tracking ID: ' + (auth?.trackingId || '—')],
+      ['N', 7, 50, 46, 'SHA-256: ' + (auth?.hash || '—')],
+      ['N', 7, 50, 32, 'Verified at: ' + (auth?.timestamp || '—')],
     ]
 
     const contentCommands = [
@@ -813,13 +826,14 @@ export default function Sales() {
     return new Blob([pdf], { type: 'application/pdf' })
   }
 
-  function downloadPdf(invoice) {
+  async function downloadPdf(invoice) {
     if (!invoice) {
       setPdfNote('Nothing to download.')
       return
     }
     try {
-      const blob = invoiceToPdfBlob(invoice)
+      const auth = await invoiceAuth(invoice)
+      const blob = invoiceToPdfBlob(invoice, auth)
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url

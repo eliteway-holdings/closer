@@ -61,9 +61,9 @@ function completionEndpoint(base) {
 }
 
 async function requestCompletion(base, key, payload, label) {
-  const endpoint = completionEndpoint(base)
-  console.log(`${label} target URL: ${endpoint}`)
-  const response = await fetch(endpoint, {
+  const url = completionEndpoint(base)
+  console.log(url)
+  const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -74,13 +74,13 @@ async function requestCompletion(base, key, payload, label) {
   const contentType = response.headers.get('content-type') || ''
   const text = await response.text()
   if (!response.ok || !contentType.toLowerCase().includes('application/json')) {
-    console.error(`${label} provider response`, { endpoint, status: response.status, contentType, body: text.slice(0, 2000) })
+    console.error(`${label} provider response`, { endpoint: url, status: response.status, contentType, body: text.slice(0, 2000) })
     return { response, data: null, error: text || `Provider returned HTTP ${response.status}` }
   }
   try {
     return { response, data: JSON.parse(text), error: null }
   } catch (error) {
-    console.error(`${label} provider returned invalid JSON`, { endpoint, status: response.status, contentType, body: text.slice(0, 2000), error: error.message })
+    console.error(`${label} provider returned invalid JSON`, { endpoint: url, status: response.status, contentType, body: text.slice(0, 2000), error: error.message })
     return { response, data: null, error: 'Provider returned invalid JSON' }
   }
 }

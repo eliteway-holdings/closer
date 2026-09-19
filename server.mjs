@@ -53,21 +53,14 @@ function llmMessages(messages = []) {
   }))
 }
 
-const NVIDIA_CHAT_COMPLETIONS = 'https://integrate.api.nvidia.com/v1/chat/completions'
-
 function completionEndpoint(base) {
   const normalized = String(base || 'https://api.openai.com/v1').trim().replace(/\/+$/, '')
-  try {
-    const url = new URL(normalized)
-    if (url.hostname === 'integrate.api.nvidia.com') return NVIDIA_CHAT_COMPLETIONS
-  } catch {
-    return NVIDIA_CHAT_COMPLETIONS
-  }
-  return normalized.endsWith('/chat/completions') ? normalized : normalized + '/chat/completions'
+  return normalized.endsWith('/v1') ? normalized + '/chat/completions' : normalized + '/v1/chat/completions'
 }
 
 async function requestCompletion(base, key, payload, label) {
   const endpoint = completionEndpoint(base)
+  console.log(`${label} target URL: ${endpoint}`)
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: {

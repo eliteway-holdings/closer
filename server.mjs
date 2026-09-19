@@ -43,7 +43,7 @@ app.use('/api', (req, res, next) => {
 function reasoningKey() {
   const stored = houseKey()
   if (stored?.key && stored?.base) return stored
-  const envKey = process.env.OPENAI_API_KEY || process.env.LLM_KEY
+  const envKey = process.env.OPENROUTER_API_KEY || process.env.NVIDIA_API_KEY || process.env.OPENAI_API_KEY || process.env.LLM_KEY
   const envBase = String(process.env.LLM_BASE || '').trim()
   return envKey && envBase ? { key: String(envKey).trim(), base: envBase, model: process.env.LLM_MODEL } : null
 }
@@ -67,7 +67,7 @@ async function requestCompletion(base, key, payload, label) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: 'Bearer ' + key,
+      Authorization: `Bearer ${String(key).trim()}`,
     },
     body: JSON.stringify(payload),
   })

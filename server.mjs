@@ -41,9 +41,10 @@ app.use('/api', (req, res, next) => {
 
 function reasoningKey() {
   const stored = houseKey()
-  if (typeof stored?.key === 'string' && stored.key.trim()) return stored
+  if (stored?.key && stored?.base) return stored
   const envKey = process.env.OPENAI_API_KEY || process.env.LLM_KEY
-  return envKey ? { key: envKey, base: process.env.LLM_BASE, model: process.env.LLM_MODEL } : null
+  const envBase = String(process.env.LLM_BASE || '').trim()
+  return envKey && envBase ? { key: String(envKey).trim(), base: envBase, model: process.env.LLM_MODEL } : null
 }
 
 function llmMessages(messages = []) {
@@ -260,12 +261,12 @@ app.post('/api/reason', async (req, res) => {
   }
 })
 
-app.post('/api/partner/chat', async (req, res) => {
+async function partnerChat(req, res) {
   const hk = reasoningKey()
   const key = hk?.key
-  const base = String(hk?.base || process.env.LLM_BASE || 'https://api.openai.com/v1').replace(/\/$/, '')
+  const base = String(hk?.base || '').trim().replace(/\/+$/, '')
   const model = hk?.model || process.env.LLM_MODEL || 'gpt-4o-mini'
-  if (!key) return res.status(400).json({ error: 'Add a reasoning key on House first. Staff never hold it.' })
+  if (!key || !base) return res.status(400).json({ error: 'Add an API key and base URL on House first. Staff never hold them.' })
   const msg = String(req.body?.message || '').slice(0, 8000)
   if (!msg) return res.status(400).json({ error: 'Message required' })
   const partner = loadPartner()
@@ -299,7 +300,9 @@ app.post('/api/partner/chat', async (req, res) => {
     console.error('Partner chat failed:', e)
     res.status(502).json({ error: e.message || String(e) })
   }
-})
+}
+
+app.post(['/api/partner/chat', '/api/chat'], partnerChat)
 
 app.post('/api/coach', async (req, res) => {
   const hk = reasoningKey()

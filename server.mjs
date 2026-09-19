@@ -40,12 +40,16 @@ app.use('/api', (req, res, next) => {
   return requireRole('executive', 'sales', 'marketing')(req, res, next)
 })
 
-function reasoningKey() {
+function reasoningKey(req) {
+  const authorization = String(req?.headers?.authorization || '')
+  const headerKey = String(req?.headers?.['x-api-key'] || req?.headers?.['x-provider-api-key'] || '').trim()
+    || (authorization.toLowerCase().startsWith('bearer ') ? authorization.slice(7).trim() : '')
+  if (headerKey) return { key: headerKey, base: String(req?.headers?.['x-ai-base-url'] || '').trim(), model: req?.headers?.['x-ai-model'] }
   const stored = houseKey()
-  if (stored?.key && stored?.base) return stored
-  const envKey = process.env.OPENROUTER_API_KEY || process.env.NVIDIA_API_KEY || process.env.OPENAI_API_KEY || process.env.LLM_KEY
-  const envBase = String(process.env.LLM_BASE || '').trim()
-  return envKey && envBase ? { key: String(envKey).trim(), base: envBase, model: process.env.LLM_MODEL } : null
+  if (stored?.key) return stored
+  const envKey = process.env.OPENROUTER_API_KEY || process.env.NVIDIA_API_KEY || process.env.DEEPSEEK_API_KEY || process.env.OPENAI_API_KEY || process.env.LLM_KEY
+  const envBase = String(process.env.LLM_BASE || (process.env.DEEPSEEK_API_KEY ? 'https://api.deepseek.com/v1' : '')).trim()
+  return envKey ? { key: String(envKey).trim(), base: envBase, model: process.env.LLM_MODEL } : null
 }
 
 function llmMessages(messages = []) {
@@ -55,21 +59,44 @@ function llmMessages(messages = []) {
   }))
 }
 
-function completionEndpoint(base) {
+function providerFor(key, base) {
+  const normalizedKey = String(key || '').trim()
+  const normalizedBase = String(base || '').trim().toLowerCase()
+  if (normalizedKey.startsWith('sk-or-')) return { name: 'OpenRouter', endpoint: 'https://openrouter.ai/api/v1/chat/completions', auth: 'bearer' }
+  if (normalizedKey.startsWith('nvapi-')) return { name: 'NVIDIA NIM', endpoint: 'https://integrate.api.nvidia.com/v1/chat/completions', auth: 'bearer' }
+  if (normalizedKey.startsWith('gsk_')) return { name: 'Groq', endpoint: 'https://api.groq.com/openai/v1/chat/completions', auth: 'bearer' }
+  if (normalizedKey.startsWith('sk-ant-')) return { name: 'Anthropic', endpoint: 'https://api.anthropic.com/v1/messages', auth: 'anthropic' }
+  if (normalizedBase.includes('deepseek')) return { name: 'DeepSeek', endpoint: 'https://api.deepseek.com/v1/chat/completions', auth: 'bearer' }
+  if (normalizedKey.startsWith('sk-')) return { name: 'OpenAI', endpoint: 'https://api.openai.com/v1/chat/completions', auth: 'bearer' }
   const normalized = String(base || 'https://api.openai.com/v1').trim().replace(/\/+$/, '')
-  return normalized.endsWith('/v1') ? normalized + '/chat/completions' : normalized + '/v1/chat/completions'
+  return { name: 'OpenAI-compatible', endpoint: normalized.endsWith('/v1') ? normalized + '/chat/completions' : normalized + '/v1/chat/completions', auth: 'bearer' }
 }
 
 async function requestCompletion(base, key, payload, label) {
-  const url = completionEndpoint(base)
-  console.log(url)
+  const provider = providerFor(key, base)
+  const url = provider.endpoint
+  const incomingPrefix = String(key).trim().slice(0, 8)
+  console.log(`${label} provider=${provider.name} endpoint=${url} keyPrefix=${incomingPrefix}`)
+  const headers = { 'Content-Type': 'application/json' }
+  let body = payload
+  if (provider.auth === 'anthropic') {
+    headers['x-api-key'] = String(key).trim()
+    headers['anthropic-version'] = '2023-06-01'
+    const system = payload.messages?.find((message) => message.role === 'system')?.content
+    body = {
+      model: payload.model,
+      max_tokens: payload.max_tokens || 4096,
+      temperature: payload.temperature,
+      ...(system ? { system } : {}),
+      messages: (payload.messages || []).filter((message) => message.role !== 'system'),
+    }
+  } else {
+    headers.Authorization = `Bearer ${String(key).trim()}`
+  }
   const response = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${String(key).trim()}`,
-    },
-    body: JSON.stringify(payload),
+    headers,
+    body: JSON.stringify(body),
   })
   const contentType = response.headers.get('content-type') || ''
   const text = await response.text()
@@ -78,7 +105,11 @@ async function requestCompletion(base, key, payload, label) {
     return { response, data: null, error: text || `Provider returned HTTP ${response.status}` }
   }
   try {
-    return { response, data: JSON.parse(text), error: null }
+    const data = JSON.parse(text)
+    if (provider.auth === 'anthropic') {
+      return { response, data: { ...data, choices: [{ message: { content: data.content?.map((item) => item.text || '').join('') || '' } }] }, error: null }
+    }
+    return { response, data, error: null }
   } catch (error) {
     console.error(`${label} provider returned invalid JSON`, { endpoint: url, status: response.status, contentType, body: text.slice(0, 2000), error: error.message })
     return { response, data: null, error: 'Provider returned invalid JSON' }
@@ -236,7 +267,7 @@ function formatPartnerText(value) {
 const REASONING = `You are Elite Way Holdings' conversational creative and communications partner. Be natural, specific, warm, and useful. Create complete, polished work that is ready to send or publish. Never invent funding, valuations, proof, or company facts. Return valid JSON with the fields appropriate to the requested job, including say and, for email or WhatsApp, subject and body.`
 
 app.post('/api/reason', async (req, res) => {
-  const hk = reasoningKey()
+  const hk = reasoningKey(req)
   const key = hk?.key
   const base = String(hk?.base || process.env.LLM_BASE || 'https://api.openai.com/v1').replace(/\/$/, '')
   const model = hk?.model || process.env.LLM_MODEL || 'gpt-4o-mini'
@@ -263,11 +294,11 @@ app.post('/api/reason', async (req, res) => {
 })
 
 async function partnerChat(req, res) {
-  const hk = reasoningKey()
+  const hk = reasoningKey(req)
   const key = hk?.key
   const base = String(hk?.base || '').trim().replace(/\/+$/, '')
   const model = hk?.model || process.env.LLM_MODEL || 'gpt-4o-mini'
-  if (!key || !base) return res.status(400).json({ error: 'Add an API key and base URL on House first. Staff never hold them.' })
+  if (!key) return res.status(400).json({ error: 'Add an API key on House first. Staff never hold it.' })
   const msg = String(req.body?.message || '').slice(0, 8000)
   if (!msg) return res.status(400).json({ error: 'Message required' })
   const partner = loadPartner()
@@ -306,7 +337,7 @@ async function partnerChat(req, res) {
 app.post(['/api/partner/chat', '/api/chat'], partnerChat)
 
 app.post('/api/coach', async (req, res) => {
-  const hk = reasoningKey()
+  const hk = reasoningKey(req)
   const key = hk?.key
   const base = String(hk?.base || process.env.LLM_BASE || 'https://api.openai.com/v1').replace(/\/$/, '')
   const model = hk?.model || process.env.LLM_MODEL || 'gpt-4o-mini'

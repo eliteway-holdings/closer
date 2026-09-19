@@ -47,7 +47,7 @@ export function saveStore(d) {
 
 export function activeKey() {
   const d = loadStore()
-  const selected = d.list.find((key) => key.id === d.active && key.key && key.base) || d.list.find((key) => key.key && key.base)
+  const selected = d.list.find((key) => key.id === d.active && key.key) || d.list.find((key) => key.key)
   return selected || null
 }
 
